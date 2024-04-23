@@ -1,0 +1,20 @@
+{
+  "status": "success",
+  "activeActivations": [
+    {
+      "activationId": "1849399716",
+      "serviceCode": "ot",
+      "phoneNumber": "79587321126",
+      "activationCost": "90.00",
+      "activationStatus": "4",
+      "smsCode": null,
+      "smsText": null,
+      "activationTime": "2023-10-27 18:43:12",
+      "discount": "0",
+      "repeated": "0",
+      "countryCode": "0",
+      "countryName": "Russia",
+      "canGetAnotherSms": "1"
+    }
+  ]
+}

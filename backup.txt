@@ -1,0 +1,579 @@
+package service;
+
+import bo.VkAccount;
+import da.DbConnection;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.BasicResponseHandler;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.message.BasicNameValuePair;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.web.client.RestTemplate;
+import util.IConstants;
+import util.ProxyCustomizer;
+
+import java.net.URL;
+import java.net.URLConnection;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public class VkService {
+    private static VkService INSTANCE;
+
+    public static VkService getInstance() {
+        if (INSTANCE == null) {
+            INSTANCE = new VkService();
+        }
+        return INSTANCE;
+    }
+
+    public String getHtml(final VkAccount vkAccount, final String link) throws Exception {
+        final URLConnection connection = new URL(link).openConnection();
+        connection.setRequestProperty("accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9");
+        connection.setRequestProperty("accept-language", "en-US,en;q=0.9,ru-RU;q=0.8,ru;q=0.7");
+        connection.setRequestProperty("cache-control", "max-age=0");
+        connection.setRequestProperty("sec-ch-ua", "\"Google Chrome\";v=\"107\", \"Chromium\";v=\"107\", \"Not=A?Brand\";v=\"24\"");
+        connection.setRequestProperty("sec-ch-ua-mobile", "?0");
+        connection.setRequestProperty("sec-ch-ua-platform", "\"Windows\"");
+        connection.setRequestProperty("sec-fetch-dest", "document");
+        connection.setRequestProperty("sec-fetch-mode", "navigate");
+        connection.setRequestProperty("sec-fetch-site", "same-origin");
+        connection.setRequestProperty("sec-fetch-user", "?1");
+        connection.setRequestProperty("upgrade-insecure-requests", "1");
+        connection.setRequestProperty("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36/oA8zXQpfFvdFwZG5P");
+        connection.setRequestProperty("cookie", vkAccount.getCookie());
+        final Scanner scanner = new Scanner(connection.getInputStream(), "windows-1251");
+        scanner.useDelimiter("\\Z");
+        final String profileHtml = scanner.next();
+        scanner.close();
+        if (profileHtml.contains("<div class=\"message_page_title\">Ошибка</div>")
+                || profileHtml.contains("vulkan.casino")
+                || profileHtml.contains("<div class=\"HiddenPostBlank__header\">Запись удалена</div>")
+        ) {
+            System.out.println(link + " is added to blacklist");
+            DbConnection.getInstance().blackListLink(link);
+            return null;
+        }
+        return profileHtml;
+    }
+
+    public void like(final VkAccount vkAccount, final String link, final RestTemplate restTemplate) throws Exception {
+        if (link.contains("z=photo")) {
+            likePhoto(vkAccount, "https://vk.com/" + link.split("z=")[1], restTemplate);
+            return;
+        }
+        System.out.println(new Date() + " vk acc is going to like: " + link);
+        final String profileHtml = getHtml(vkAccount, link);
+        String hash = null;
+        final Matcher publicHashMatcher = Pattern.compile("data-reaction-hash=(\\\".*\\\")").matcher(profileHtml);
+        if (publicHashMatcher.find()) {
+            hash = publicHashMatcher.group().split("=")[1].split(" ")[0].replaceAll("\"", "");
+        }
+        String[] linkParts = link.split("/");
+        final List<NameValuePair> urlEncodedBody = new ArrayList<>();
+        urlEncodedBody.add(new BasicNameValuePair("act", "a_set_reaction"));
+        urlEncodedBody.add(new BasicNameValuePair("al", "1"));
+        urlEncodedBody.add(new BasicNameValuePair("from", "wall_one"));
+        urlEncodedBody.add(new BasicNameValuePair("reaction_id", "0"));
+        urlEncodedBody.add(new BasicNameValuePair("wall", "2"));
+        urlEncodedBody.add(new BasicNameValuePair("hash", hash));
+        urlEncodedBody.add(new BasicNameValuePair("object", linkParts[linkParts.length - 1].split("\\?")[0]));
+        final HttpPost request = new HttpPost("https://vk.com/like.php?act=a_set_reaction");
+        request.addHeader("content-type", "application/x-www-form-urlencoded");
+        request.addHeader("cookie", vkAccount.getCookie());
+        request.setEntity(new UrlEncodedFormEntity(urlEncodedBody));
+        final String responseBody = ProxyCustomizer.executeRequest(vkAccount, request);
+        System.out.println(new Date() + " vk acc " + vkAccount.getId() + " pressed like for " + link + " vk response " + responseBody);
+
+    }
+
+    public boolean vote(final VkAccount vkAccount, final String link, final RestTemplate restTemplate, final Integer optionNumber) throws Exception {
+        try {
+            System.out.println(new Date() + " vk acc is going to vote: " + link);
+            final String profileHtml = getHtml(vkAccount, link);
+            String hash = null;
+            final Matcher publicHashMatcher = Pattern.compile("data-hash=\"(.*?)\"", Pattern.DOTALL).matcher(profileHtml);
+            while (publicHashMatcher.find()) {
+                hash = publicHashMatcher.group(1);
+            }
+            if (StringUtils.isEmpty(hash)) {
+                System.out.println(link + " is added to blacklist");
+                DbConnection.getInstance().blackListLink(link);
+                return false;
+            }
+            String votingId = null;
+            final Matcher votingIdMatcher = Pattern.compile("media_voting\\s_media_voting(.*?)\\s", Pattern.DOTALL).matcher(profileHtml);
+            if (votingIdMatcher.find()) {
+                votingId = votingIdMatcher.group(1);
+            }
+            String optionId = null;
+            final Matcher optionIdMatcher = Pattern.compile("<div class=\"media_voting_option_wrap\\s_media_voting_option(.*?)\\s", Pattern.DOTALL).matcher(profileHtml);
+            int index = 1;
+            do {
+                optionIdMatcher.find();
+                optionId = optionIdMatcher.group(1);
+                index++;
+            } while (index <= optionNumber);
+
+            final List<NameValuePair> urlEncodedBody = new ArrayList<>();
+            String[] linkParts = link.split("/");
+            urlEncodedBody.add(new BasicNameValuePair("act", "vote"));
+            urlEncodedBody.add(new BasicNameValuePair("al", "1"));
+            urlEncodedBody.add(new BasicNameValuePair("hash", hash));
+            urlEncodedBody.add(new BasicNameValuePair("material", linkParts[linkParts.length - 1].split("\\?")[0]));
+            urlEncodedBody.add(new BasicNameValuePair("option_ids", optionId));
+            urlEncodedBody.add(new BasicNameValuePair("ref", "wall"));
+            urlEncodedBody.add(new BasicNameValuePair("voting_id", votingId));
+            final HttpPost request = new HttpPost("https://vk.com/al_voting.php?act=vote");
+            request.addHeader("content-type", "application/x-www-form-urlencoded");
+            request.addHeader("cookie", vkAccount.getCookie());
+            request.setEntity(new UrlEncodedFormEntity(urlEncodedBody));
+            final String responseBody = ProxyCustomizer.executeRequest(vkAccount, request);
+//            if (responseBody.contains("опрос<span class=\"media_voting_separator\">&sdot;</span>завершён") || responseBody.contains("Ошибка доступа")) {
+//                System.out.println(link + " is added to blacklist");
+//                DbConnection.getInstance().blackListLink(link);
+//                return false;
+//            }
+            System.out.println(new Date() + " vk acc " + vkAccount.getId() + " voted for " + link + " vk response " + responseBody);
+            return true;
+        } catch (Exception e) {
+            System.out.println(link + " is added to blacklist");
+            DbConnection.getInstance().blackListLink(link);
+            return false;
+
+        }
+    }
+
+    public boolean likeReply(final VkAccount vkAccount, final String link, final RestTemplate restTemplate) throws Exception {
+        System.out.println(new Date() + " vk acc is going to like reply: " + link);
+        String[] linkParts = link.split("/");
+        final String object;
+        if (!link.contains("-")) {
+            object = "wall_reply" + linkParts[linkParts.length - 1].split("\\?")[0].split("_")[0].replace("wall", "") + "_" + link.split("reply=")[1];
+        } else {
+            object = "wall_reply-" + linkParts[linkParts.length - 1].split("\\?")[0].split("-")[1].split("_")[0] + "_" + link.split("reply=")[1];
+        }
+        final String profileHtml = getHtml(vkAccount, link);
+        String hash = null;
+        final Matcher publicHashMatcher = Pattern.compile("Likes.toggle\\(this, event, '" + object + "', '(.*?)'\\)").matcher(profileHtml);
+        if (publicHashMatcher.find()) {
+            hash = publicHashMatcher.group(1);
+        }
+        if (hash == null) {
+            System.out.println(link + " is added to blacklist");
+            DbConnection.getInstance().blackListLink(link);
+            return false;
+        }
+        final MultiValueMap<String, String> body = new LinkedMultiValueMap<String, String>();
+        body.add("act", "a_do_like");
+        body.add("al", "1");
+        body.add("from", "wall_one");
+        body.add("from_widget", "0");
+        body.add("hash", hash);
+        body.add("object", object);
+        body.add("wall", "2");
+        final List<NameValuePair> urlEncodedBody = new ArrayList<>();
+        urlEncodedBody.add(new BasicNameValuePair("act", "a_do_like"));
+        urlEncodedBody.add(new BasicNameValuePair("al", "1"));
+        urlEncodedBody.add(new BasicNameValuePair("from", "wall_one"));
+        urlEncodedBody.add(new BasicNameValuePair("from_widget", "0"));
+        final HttpPost request = new HttpPost("https://vk.com/like.php?act=a_set_reaction");
+        request.addHeader("content-type", "application/x-www-form-urlencoded");
+        request.addHeader("cookie", vkAccount.getCookie());
+        request.setEntity(new UrlEncodedFormEntity(urlEncodedBody));
+        final String responseBody = ProxyCustomizer.executeRequest(vkAccount, request);
+        System.out.println(new Date() + " vk acc " + vkAccount.getId() + " pressed like for reply " + link + " vk response " + responseBody);
+        return true;
+    }
+    public boolean comment(final VkAccount vkAccount, String link, final String message, final RestTemplate restTemplate) throws Exception {
+        if (link.contains("?w=")) {
+            link = "https://vk.com/" + link.split("w=")[1];
+        }
+        System.out.println(new Date() + " vk acc is going to comment: " + link);
+        String[] linkParts = link.split("/");
+        final String object = linkParts[linkParts.length - 1].split("\\?")[0].replace("wall", "");
+        final String profileHtml = getHtml(vkAccount, link);
+        final HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.set("cookie", vkAccount.getCookie());
+        httpHeaders.set("content-type", "application/x-www-form-urlencoded");
+        String hash = null;
+        final Matcher publicHashMatcher = Pattern.compile("id=\"post_hash-(.*?)\" value=\"(.*?)\"").matcher(profileHtml);
+        if (publicHashMatcher.find()) {
+            hash = publicHashMatcher.group(2);
+        }
+        if (hash == null) {
+            System.out.println(link + " is added to blacklist");
+            DbConnection.getInstance().blackListLink(link);
+            return false;
+        }
+        final MultiValueMap<String, String> body = new LinkedMultiValueMap<String, String>();
+        body.add("Message", message);
+        body.add("act", "post");
+        body.add("al", "1");
+        body.add("from", "");
+        body.add("hash", hash);
+        body.add("need_last", "0");
+        body.add("only_new", "0");
+        body.add("order", "smart");
+        body.add("ref", "wall_one");
+        body.add("reply_to", object);
+        body.add("reply_to_msg", "");
+        body.add("reply_to_user", "0");
+        body.add("timestamp", String.valueOf(new Date().getTime()));
+        //body.add("top_replies", "167880,167878");
+        body.add("type", "full");
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<MultiValueMap<String, String>>(body, httpHeaders);
+        final ResponseEntity response = restTemplate.exchange("https://vk.com/al_wall.php?act=post",
+                HttpMethod.POST, request, String.class);
+        System.out.println(new Date() + " vk acc " + vkAccount.getId() + " commented " + link + " vk response " + response.getBody());
+        return true;
+    }
+
+    public void showPost(final VkAccount vkAccount, final String link, final RestTemplate restTemplate) throws Exception {
+        System.out.println(new Date() + " vk acc is going to view: " + link);
+        final String profileHtml = getHtml(vkAccount, link);
+        String hash = null;
+        final Matcher publicHashMatcher = Pattern.compile("post_view_hash=\"(.*?)\"", Pattern.DOTALL).matcher(profileHtml);
+        if (publicHashMatcher.find()) {
+            hash = publicHashMatcher.group(1);
+        }
+        final HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.set("cookie", vkAccount.getCookie());
+        httpHeaders.set("content-type", "application/x-www-form-urlencoded");
+        httpHeaders.set("referer", link);
+        final MultiValueMap<String, String> body = new LinkedMultiValueMap<String, String>();
+        final String[] linkParts = link.split("/");
+        final String object;
+        if (link.contains("?w=")) {
+            object = link.split("\\?w=")[1].replace("wall", "");
+        } else {
+            object = linkParts[linkParts.length - 1].split("\\?")[0].replace("wall", "");
+        }
+        body.add("act", "seen");
+        body.add("al", "1");
+        String[] objectParts = object.split("_");
+        body.add("data",  objectParts[0] + "_u" + objectParts[1] + ":-1::na");
+        body.add("meta", object + ":830:1329");
+        body.add("hash", hash);
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<MultiValueMap<String, String>>(body, httpHeaders);
+        final ResponseEntity response = restTemplate.exchange("https://vk.com/al_page.php?act=seen",
+                HttpMethod.POST, request, String.class);
+        System.out.println(new Date() + " vk acc " + vkAccount.getId() + " viewed " + link + " vk response " + response.getBody());
+
+    }
+
+    public void showVideo(final VkAccount vkAccount, final String link, final RestTemplate restTemplate) throws Exception {
+        System.out.println(new Date() + " vk acc is going to view video: " + link);
+        final String profileHtml = getHtml(vkAccount, link);
+        String hash = null;
+        final Matcher publicHashMatcher = Pattern.compile("\"view_hash\":\"(.*?)\"", Pattern.DOTALL).matcher(profileHtml);
+        if (publicHashMatcher.find()) {
+            hash = publicHashMatcher.group(1);
+        }
+        final HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.set("cookie", vkAccount.getCookie());
+        httpHeaders.set("content-type", "application/x-www-form-urlencoded");
+        httpHeaders.set("referer", link);
+        final MultiValueMap<String, String> body = new LinkedMultiValueMap<String, String>();
+        final String object;
+        if (link.contains("z=")) {
+            object = link.split("z=")[1];
+        } else {
+            final String[] linkParts = link.split("/");
+            object = linkParts[linkParts.length - 1].split("\\?")[0];
+        }
+        body.add("al", "1");
+        body.add("curr_res", "2");
+        body.add("hash", hash);
+        body.add("max_res", "4");
+        body.add("module", "community_videos");
+        body.add("oid", "-134699547");
+        body.add("player", "html5");
+        body.add("vid", object.split("_")[1]);
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<MultiValueMap<String, String>>(body, httpHeaders);
+        final ResponseEntity response = restTemplate.exchange("https://vk.com/al_video.php?act=inc_view_counter",
+                HttpMethod.POST, request, String.class);
+        System.out.println(new Date() + " vk acc " + vkAccount.getId() + " viewed video " + link + " vk response " + response.getBody());
+
+    }
+
+    public void likePhoto(final VkAccount vkAccount, final String link, final RestTemplate restTemplate) throws Exception {
+        System.out.println(new Date() + " vk acc is going to like photo: " + link);
+        String[] linkParts = link.split("/");
+        final String object = linkParts[linkParts.length - 1].split("\\?")[0];
+        final String profileHtml = getHtml(vkAccount, link);
+        final HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.set("cookie", vkAccount.getCookie());
+        httpHeaders.set("content-type", "application/x-www-form-urlencoded");
+        String hash = null;
+        //"hash":"c647c6880a8f91aca1"
+        final Matcher publicHashMatcher = Pattern.compile("Likes\\.toggle\\(this, event, '" + object + "', '(.*?)'\\)", Pattern.DOTALL).matcher(profileHtml);
+        if (publicHashMatcher.find()) {
+            hash = publicHashMatcher.group(1);
+        }
+        System.out.println(hash);
+        final MultiValueMap<String, String> body = new LinkedMultiValueMap<String, String>();
+        body.add("act", "a_do_like");
+        body.add("al", "1");
+        body.add("from", "photo_viewer");
+        body.add("from_widget", "0");
+        body.add("hash", hash);
+        body.add("object", object);
+        body.add("wall", "2");
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<MultiValueMap<String, String>>(body, httpHeaders);
+        final ResponseEntity response = restTemplate.exchange("https://vk.com/like.php?act=a_do_like",
+                HttpMethod.POST, request, String.class);
+        System.out.println(new Date() + " vk acc " + vkAccount.getId() + " pressed like for photo " + link + " vk response " + response.getBody());
+
+    }
+
+    public void likeClip(final VkAccount vkAccount, final String link, final RestTemplate restTemplate) throws Exception {
+        System.out.println(new Date() + " vk acc is going to like clip: " + link);
+        String[] linkParts = link.split("/");
+        final String object = linkParts[linkParts.length - 1].split("\\?")[0];
+        final HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.set("cookie", vkAccount.getCookie());
+        httpHeaders.set("content-type", "application/x-www-form-urlencoded");
+        String hash = null;
+        final MultiValueMap<String, String> videoBody = new LinkedMultiValueMap<String, String>();
+        videoBody.add("act", "show");
+        videoBody.add("al", "1");
+        videoBody.add("al_ad", "0");
+        videoBody.add("autoplay", "0");
+        videoBody.add("webcast", "0");
+        videoBody.add("list", "");
+        videoBody.add("module", "");
+        videoBody.add("video", object.replace("clip", ""));
+        final String profileHtml = restTemplate.exchange("https://vk.com/al_video.php?act=show", HttpMethod.POST, new HttpEntity<>(videoBody, httpHeaders), String.class).getBody();
+        //"likeHash":"292089705ce8e08996"
+        final Matcher publicHashMatcher = Pattern.compile("\"likeHash\":\"(.*?)\"", Pattern.DOTALL).matcher(profileHtml);
+        if (publicHashMatcher.find()) {
+            hash = publicHashMatcher.group(1);
+        }
+        System.out.println(hash);
+        final MultiValueMap<String, String> body = new LinkedMultiValueMap<String, String>();
+        body.add("act", "a_do_like");
+        body.add("al", "1");
+        body.add("from", "videoview");
+        body.add("from_widget", "0");
+        body.add("hash", hash);
+        body.add("object", object);
+        body.add("wall", "2");
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<MultiValueMap<String, String>>(body, httpHeaders);
+        final ResponseEntity response = restTemplate.exchange("https://vk.com/like.php?act=a_do_like",
+                HttpMethod.POST, request, String.class);
+        System.out.println(new Date() + " vk acc " + vkAccount.getId() + " pressed like for clip " + link + " vk response " + response.getBody());
+
+    }
+
+    public void share(final VkAccount vkAccount, final String link, final RestTemplate restTemplate) throws Exception {
+        System.out.println(new Date() + " vk acc is going to share: " + link);
+        String[] linkParts = link.split("/");
+        final String object = linkParts[linkParts.length - 1].split("\\?")[0];
+        final HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.set("cookie", vkAccount.getCookie());
+        httpHeaders.set("content-type", "application/x-www-form-urlencoded");
+        final MultiValueMap<String, String> bodyForBoxHashRequest = new LinkedMultiValueMap<String, String>();
+        bodyForBoxHashRequest.add("act", "publish_box");
+        bodyForBoxHashRequest.add("al", "1");
+        bodyForBoxHashRequest.add("from_widget", "0");
+        bodyForBoxHashRequest.add("object", object);
+        final String publishBoxBody = restTemplate.exchange("https://vk.com/like.php?act=publish_box", HttpMethod.POST, new HttpEntity<>(bodyForBoxHashRequest, httpHeaders), String.class).getBody();
+        String hash = null;
+        final Matcher publicHashMatcher = Pattern.compile("shHash:\\s'(.*)',").matcher(publishBoxBody);
+        if (publicHashMatcher.find()) {
+            hash = publicHashMatcher.group().split("'")[1];
+        }
+        final MultiValueMap<String, String> body = new LinkedMultiValueMap<String, String>();
+        body.add("act", "a_do_publish");
+        body.add("al", "1");
+        body.add("close_comments", "0");
+        body.add("friends_only", "0");
+        body.add("from", "box");
+        body.add("hash", hash);
+        body.add("list", "");
+        body.add("mark_as_ads", "0");
+        body.add("mute_notifications", "0");
+        body.add("object", object);
+        body.add("ret_data", "1");
+        body.add("to", "0");
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<MultiValueMap<String, String>>(body, httpHeaders);
+        final ResponseEntity response = restTemplate.exchange("https://vk.com/like.php?act=a_do_publish",
+                HttpMethod.POST, request, String.class);
+        System.out.println(new Date() + " vk acc " + vkAccount.getId() + " shared " + link + " vk response " + response.getBody());
+    }
+
+    public boolean subscribe(final VkAccount vkAccount, final String link) throws Exception {
+        System.out.println(new Date() + " vk acc is going to subscribe: " + link);
+        final String profileHtml = getHtml(vkAccount, link);
+        if (profileHtml.contains("<h1 class=\"page_name\">Займ")
+                || profileHtml.contains("<h1 class=\"page_name\">ЗАЙМ")
+                || profileHtml.contains("<h1 class=\"page_name\">займ")
+        ) {
+            System.out.println("Займбот хуйни: " + link);
+            DbConnection.getInstance().blackListLink(link);
+            return false;
+        }
+        String groupId = null;
+        String hash = null;
+        final Matcher groupMatcher = Pattern.compile("(?<=\\bonclick=\")[^\"]*").matcher(profileHtml);
+        while (groupMatcher.find()) {
+            String group = groupMatcher.group();
+            if (group.contains("Groups.enter")) {
+                //Groups.enter(this, 82277766, &#39;63ec2acc7abe0e9d16&#39;, &#39;_&#39;)
+                String[] inviteParams = group.split(",");
+                groupId = inviteParams[1].trim();
+                hash = inviteParams[2].trim().replaceAll("&#39;", "");
+                break;
+            }
+        }
+        final MultiValueMap<String, String> body = new LinkedMultiValueMap<String, String>();
+        final String url;
+        final Boolean isPublic;
+        final List<NameValuePair> urlEncodedBody = new ArrayList<>();
+        if (groupId == null) {
+            final Matcher publicGroupIdMatcher = Pattern.compile("\"public_id\":(\\d+)").matcher(profileHtml);
+            if (publicGroupIdMatcher.find()) {
+                groupId = publicGroupIdMatcher.group().split(":")[1];
+            }
+            body.add("act", "a_enter");
+            body.add("al", "1");
+            body.add("pid", groupId);
+            body.add("ref", "community_page");
+            url = "https://vk.com/al_public.php?act=a_enter";
+            urlEncodedBody.add(new BasicNameValuePair("act", "a_enter"));
+            urlEncodedBody.add(new BasicNameValuePair("al", "1"));
+            urlEncodedBody.add(new BasicNameValuePair("pid", groupId));
+            urlEncodedBody.add(new BasicNameValuePair("ref", "community_page"));
+            isPublic = true;
+        } else {
+            body.add("act", "enter");
+            body.add("context", "_");
+            body.add("al", "1");
+            body.add("gid", groupId);
+            body.add("ref", "community_page");
+            urlEncodedBody.add(new BasicNameValuePair("act", "enter"));
+            urlEncodedBody.add(new BasicNameValuePair("context", "_"));
+            urlEncodedBody.add(new BasicNameValuePair("al", "1"));
+            urlEncodedBody.add(new BasicNameValuePair("gid", groupId));
+            urlEncodedBody.add(new BasicNameValuePair("ref", "community_page"));
+            url = "https://vk.com/al_groups.php?act=enter";
+            isPublic = false;
+        }
+        if (hash == null) {
+            final Matcher publicHashMatcher = Pattern.compile("\"enterHash\":(\\\".*\\\")").matcher(profileHtml);
+            if (publicHashMatcher.find()) {
+                hash = publicHashMatcher.group().split(":")[1].split(",")[0].replaceAll("\"", "");
+            }
+        }
+        body.add("hash", hash);
+
+        final HttpPost request = new HttpPost(url);
+        request.addHeader("content-type", "application/x-www-form-urlencoded");
+        request.addHeader("cookie", vkAccount.getCookie());
+        request.setEntity(new UrlEncodedFormEntity(urlEncodedBody));
+        final String responseBody = ProxyCustomizer.executeRequest(vkAccount, request);
+
+//        final ResponseEntity response = restTemplate.exchange(url,
+//                HttpMethod.POST, new HttpEntity<>(body, httpHeaders), String.class);
+//        Object responseBody = response.getBody();
+        if (responseBody != null && responseBody.contains("\"payload\":[\"2\"")) {
+            DbConnection.getInstance().vkAccountCantSubscribeAnymore(vkAccount.getId());
+            return false;
+        }
+        System.out.println(new Date() + " vk acc " + vkAccount.getId() + " subscribed for " + link + " vk response " + responseBody);
+//        if (responseBody != null && responseBody.toString().contains("\"payload\":[\"8\",[\"\\\"Ошибка доступа\\\"\"")) {
+//            System.out.println(new Date() + " vk acc " + vkAccount.getId() + " going to resubscribe for " + link);
+//            if (isPublic) {
+//                body.add("act", "a_leave");
+//                restTemplate.exchange("https://vk.com/al_public.php?act=a_leave",
+//                        HttpMethod.POST, new HttpEntity<>(body, httpHeaders), String.class);
+//                body.add("act", "a_enter");
+//            } else {
+//                body.add("act", "leave");
+//                restTemplate.exchange("https://vk.com/al_groups.php?act=leave",
+//                        HttpMethod.POST, new HttpEntity<>(body, httpHeaders), String.class);
+//                body.add("act", "enter");
+//            }
+//            final ResponseEntity<String> resubscribeCall = restTemplate.exchange(url,
+//                    HttpMethod.POST, new HttpEntity<>(body, httpHeaders), String.class);
+//            System.out.println(new Date() + " vk acc " + vkAccount.getId() + " resubscribed for " + link + " vk response " + resubscribeCall.getBody());
+//        }
+        return true;
+    }
+
+    public void addFriend(final VkAccount vkAccount, String link, final RestTemplate restTemplate) throws Exception {
+        if (link.contains("http:")) {
+            link = link.replace("http", "https");
+        }
+        System.out.println(new Date() + " vk acc " + vkAccount.getId() + " is going to add friend: " + link);
+        vkAccount.setAccessToken(getAccessToken(vkAccount));
+        final String profileHtml = getHtml(vkAccount, link);
+        final HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.set("cookie", vkAccount.getCookie());
+        httpHeaders.set("content-type", "application/x-www-form-urlencoded");
+        String userId = null;
+        Matcher userIdMatcher = Pattern.compile("<a class=\"author\" href=\".*\" data-from-id=(\\\".*\\\")").matcher(profileHtml);
+        if (userIdMatcher.find()) {
+            userId = userIdMatcher.group().split("=")[3].split(" ")[0].replaceAll("\"", "");
+        }
+        if (userId == null) {
+            userIdMatcher = Pattern.compile("<a href=\"/wall(.*?)\"").matcher(profileHtml);
+            if (userIdMatcher.find()) {
+                userId = userIdMatcher.group(1);
+            }
+        }
+        final MultiValueMap<String, String> body = new LinkedMultiValueMap<String, String>();
+        System.out.println(userId);
+        body.add("user_id", userId);
+        body.add("access_token", vkAccount.getAccessToken());
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<MultiValueMap<String, String>>(body, httpHeaders);
+        final ResponseEntity response = restTemplate.exchange("https://api.vk.com/method/friends.add?v=5.191&client_id=6287487",
+                HttpMethod.POST, request, String.class);
+        Object responseBody = response.getBody();
+        if (responseBody != null && responseBody.toString().contains("Flood control")) {
+            vkAccount.setCantAddFriends(true);
+            DbConnection.getInstance().vkAccountCantAddFriendsAnymore(vkAccount.getId());
+        }
+        System.out.println(new Date() + " vk acc " + vkAccount.getId() + " added friend " + link + " vk response " + responseBody);
+    }
+
+    public String getAccessToken(final VkAccount vkAccount) throws Exception {
+        final CloseableHttpClient httpClient = HttpClients.createDefault();
+        final BasicResponseHandler responseHandler = new BasicResponseHandler();
+        final HttpPost vkAuthRequest = new HttpPost("https://login.vk.com/?act=web_token");
+        vkAuthRequest.addHeader("accept", "*/*");
+        vkAuthRequest.addHeader("accept-language", "ru-RU,ru;q=0.9");
+        vkAuthRequest.addHeader("content-type", "application/x-www-form-urlencoded");
+        vkAuthRequest.addHeader("origin", "https://vk.com");
+        vkAuthRequest.addHeader("referer", "https://vk.com/");
+        vkAuthRequest.addHeader("sec-ch-ua", "\"Google Chrome\";v=\"107\", \"Chromium\";v=\"107\", \"Not=A?Brand\";v=\"24\"");
+        vkAuthRequest.addHeader("sec-ch-ua-mobile", "?0");
+        vkAuthRequest.addHeader("sec-ch-ua-platform", "\"Windows\"");
+        vkAuthRequest.addHeader("sec-fetch-dest", "empty");
+        vkAuthRequest.addHeader("sec-fetch-mode", "cors");
+        vkAuthRequest.addHeader("sec-fetch-site", "same-site");
+        vkAuthRequest.addHeader("cookie", vkAccount.getCookie());
+        final List<NameValuePair> params = new ArrayList<>();
+        params.add(new BasicNameValuePair("version", "1"));
+        params.add(new BasicNameValuePair("app_id", IConstants.VK_CLIENT_ID));
+        params.add(new BasicNameValuePair("access_token", ""));
+        vkAuthRequest.setEntity(new UrlEncodedFormEntity(params));
+        final CloseableHttpResponse response = httpClient.execute(vkAuthRequest);
+        final String strResponse = responseHandler.handleResponse(response);
+        return strResponse.split("access_token\":\"")[1].split("\"")[0];
+    }
+}

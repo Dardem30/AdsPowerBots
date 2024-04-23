@@ -1,0 +1,123 @@
+UPDATE vk_account SET available_subscribes = fx_getRandomNumberInRange(10, 18),
+                      available_friend_requests = fx_getRandomNumberInRange(0, 1),
+                      available_shares = fx_getRandomNumberInRange(0, 1);
+UPDATE vk_account SET available_subscribes = fx_getRandomNumberInRange(5, 10),
+                      available_friend_requests = fx_getRandomNumberInRange(0, 1),
+                      available_shares = fx_getRandomNumberInRange(0, 1);
+UPDATE vk_account SET available_subscribes = fx_getRandomNumberInRange(10, 15),
+                      available_friend_requests = fx_getRandomNumberInRange(0, 1),
+                      available_shares = fx_getRandomNumberInRange(0, 1);
+UPDATE vk_account SET available_subscribes = fx_getRandomNumberInRange(5, 10),
+                      available_friend_requests = fx_getRandomNumberInRange(0, 0),
+                      available_shares = fx_getRandomNumberInRange(0, 1);
+
+-- 13:28
+create table log_income_18_05_2023
+(
+    vk_id             int   not null,
+    balance           float null,
+    income            float null,
+    balance_vkserfing float null,
+    vkserfing_income  float null,
+    balance_vktarget  float null,
+    vktarget_income   float null,
+    balance_vlike     float null,
+    vlike_income      float null
+);
+INSERT INTO log_income_18_05_2023
+SELECT va.id,
+       ifnull(a.balance, 0) + ifnull(a.balance_target, 0) + ifnull(a.balance_vlike, 0),
+       ifnull(a.balance, 0) + ifnull(a.balance_target, 0) + ifnull(a.balance_vlike, 0) - ifnull(log.balance, 0),
+       ifnull(a.balance, 0),
+       ifnull(a.balance, 0) - ifnull(log.balance_vkserfing, 0),
+       ifnull(a.balance_target, 0),
+       ifnull(a.balance_target, 0) - ifnull(log.balance_vktarget, 0),
+       ifnull(a.balance_vlike, 0),
+       ifnull(a.balance_vlike, 0) - ifnull(log.balance_vlike, 0)
+FROM vkserfing_account a
+         INNER JOIN vk_account va on a.id = va.vkserfing_account_id
+         LEFT JOIN log_income_17_05_2023 log ON log.vk_id = va.id
+-- WHERE a.balance <> -1
+ORDER BY ifnull(a.balance, 0) + ifnull(a.balance_target, 0) + ifnull(a.balance_vlike, 0) - ifnull(log.balance, 0) DESC;
+
+INSERT INTO daily_income_history(date, sum, average_per_acc) SELECT NOW(), SUM(income), SUM(income) / COUNT(*) FROM log_income_18_05_2023
+
+SELECT SUM(balance) FROM payeer_account
+
+
+
+
+
+
+
+
+
+UPDATE vk_account SET available_subscribes = fx_getRandomNumberInRange(10, 18),
+                      available_friend_requests = fx_getRandomNumberInRange(0, 1),
+                      available_shares = fx_getRandomNumberInRange(0, 1);
+UPDATE vk_account SET available_subscribes = fx_getRandomNumberInRange(5, 10),
+                      available_friend_requests = fx_getRandomNumberInRange(0, 1),
+                      available_shares = fx_getRandomNumberInRange(0, 1);
+UPDATE vk_account SET available_subscribes = fx_getRandomNumberInRange(10, 15),
+                      available_friend_requests = fx_getRandomNumberInRange(0, 1),
+                      available_shares = fx_getRandomNumberInRange(0, 1);
+UPDATE vk_account SET available_subscribes = fx_getRandomNumberInRange(5, 10),
+                      available_friend_requests = fx_getRandomNumberInRange(0, 0),
+                      available_shares = fx_getRandomNumberInRange(0, 1);
+
+INSERT INTO log_income(vk_id, income, vkserfing_income, vktarget_income, vlike_income,
+                                  balance, balance_vkserfing, balance_vktarget, balance_vlike, date)
+SELECT va.id,
+     ifnull(a.balance, 0) + ifnull(a.balance_vlike, 0) - ifnull(log.balance, 0) + ifnull(serf_ih.sum, 0) + ifnull(vlike_ih.sum, 0) AS serf_vlike_inc,
+       ifnull(a.balance, 0) - ifnull(log.balance_vkserfing, 0) + ifnull(serf_ih.sum, 0) as serf_inc,
+       ifnull(a.balance_target, 0) - ifnull(log.balance_vktarget, 0) + ifnull(tar_ih.sum, 0) AS tar_inc,
+       ifnull(a.balance_vlike, 0) - ifnull(log.balance_vlike, 0) + ifnull(vlike_ih.sum, 0) AS vlike_inc,
+       ifnull(a.balance, 0) + ifnull(a.balance_vlike, 0) AS serf_vlike,
+       ifnull(a.balance, 0) AS serf,
+       ifnull(a.balance_target, 0) AS tar,
+       ifnull(a.balance_vlike, 0) AS vlike,
+       CURDATE()
+FROM vkserfing_account a
+         INNER JOIN vk_account va on a.id = va.vkserfing_account_id
+         LEFT JOIN log_income log ON log.vk_id = va.id AND log.date = CURDATE() - INTERVAL 1 DAY
+         LEFT JOIN invoice_history serf_ih on va.id = serf_ih.vk_id AND serf_ih.date = CURDATE() -  INTERVAL 0 DAY  AND serf_ih.service = 'vkserfing'
+         LEFT JOIN invoice_history vlike_ih on va.id = vlike_ih.vk_id AND vlike_ih.date = CURDATE() -  INTERVAL 0 DAY  AND vlike_ih.service = 'vlike'
+         LEFT JOIN invoice_history tar_ih on va.id = tar_ih.vk_id AND tar_ih.date = CURDATE() -  INTERVAL 0 DAY AND tar_ih.service = 'vktarget'
+WHERE ((va.blocked = '0' OR va.blocked is null) AND a.requires_verification is null)
+ORDER BY ifnull(a.balance, 0) + ifnull(a.balance_vlike, 0) - ifnull(log.balance, 0) + ifnull(serf_ih.sum, 0) + ifnull(vlike_ih.sum, 0) DESC;
+
+INSERT INTO daily_income_history(date, sum, average_per_acc) SELECT NOW(), SUM(income), SUM(income) / COUNT(*) FROM log_income WHERE date = CURDATE();
+
+SELECT SUM(balance) FROM payeer_account;
+
+DELETE FROM payeer_account where vk_acc_id = 285;
+DELETE FROM vkserfing_account WHERE id = (SELECT vk.vkserfing_account_id FROM vk_account vk WHERE vk.id = 285)
+DELETE FROM vk_account vk WHERE vk.id = 285
+UPDATE vk_account SET available_shares = 0, available_subscribes = 0
+SELECT a.id, a.email, a.password, a.cookie, va.id, va.phone, va.login, va.password, va.cookie, va.account_id, va.vlike_account_id, va.access_token, va.userid, a.cooldown, a.xcsrftoken, va.cantaddfriends, va.cantsubscribe, va.proxy, va.port, va.proxy_username, va.proxy_password,
+       va.available_subscribes, va.available_friend_requests, va.available_shares, va.browser_profile, a.balance, pa.id, pa.acc_name,
+       a.balance_target, a.target_invoiced
+FROM vkserfing_account a
+         INNER JOIN vk_account va on a.id = va.vkserfing_account_id
+         INNER JOIN payeer_account pa on pa.vk_acc_id = va.id
+WHERE (va.blocked is null OR va.blocked = '0') AND va.proxy is not null AND a.requires_verification is null ORDER BY RAND()
+-- clean up script
+DELETE FROM payeer_account WHERE vk_acc_id IN (SELECT vk.id FROM vk_account vk INNER JOIN vkserfing_account va on vk.vkserfing_account_id = va.id WHERE vk.blocked = '1' OR va.requires_verification = '1');
+DELETE FROM vkserfing_account WHERE id IN (SELECT vkserfing_account_id FROM vk_account WHERE blocked = '1');
+DELETE FROM vk_account WHERE vkserfing_account_id IN (SELECT va.id FROM vkserfing_account va WHERE va.requires_verification = '1') OR blocked = '1';
+DELETE FROM vkserfing_account WHERE requires_verification = '1';
+
+SELECT SUBSTRING_INDEX(proxy, '.', 2), COUNT(*)
+FROM vw_balance_overview
+GROUP BY SUBSTRING_INDEX(proxy, '.', 2)
+ORDER BY COUNT(*) DESC
+
+SELECT t.action, vk_acc_id, result, COUNT(*) FROM action_log t
+WHERE vk_acc_id IN (506, 494) AND DATE(create_time) = CURDATE() - INTERVAL 1 DAY
+GROUP BY action, vk_acc_id, result
+ORDER BY action;
+
+UPDATE payeer_account pa
+SET pa.invoice = '1'
+WHERE pa.balance is not null
+  and pa.balance <> 0

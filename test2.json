@@ -1,0 +1,24 @@
+{
+  "notifier": {
+    "name": "Bugsnag JavaScript",
+    "version": "7.16.5",
+    "url": "https://github.com/bugsnag/bugsnag-js"
+  },
+  "device": {
+    "locale": "en-US",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
+    "orientation": "landscape-primary",
+    "id": "clbw3hwxe0000356uweh0xq4n"
+  },
+  "app": {
+    "releaseStage": "production",
+    "type": "browser"
+  },
+  "sessions": [
+    {
+      "id": "clbwv9fo00001356uszsfunoi",
+      "startedAt": "2022-12-20T23:37:57.648Z",
+      "user": {}
+    }
+  ]
+}

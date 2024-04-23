@@ -1,0 +1,36 @@
+sui	764998352%2CR-HK3pmZrpShf8hBwseEuQ2bOnQadLnFg_E4iWkCqrs	.login.vk.com	/	2023-12-17T22:05:42.036Z	58	✓	✓	None			Medium
+sua	d9k3O4jok9KAQL1DyIQKyQKaJ0BkjFGxScsdGOvpqD8%23764998352%5Evk1.a.lQVIOqjNr55esr-H90CVcep8YbWAZtm-XpP1BNVx0I_2JY_psNPDm3FT5CUn1MXlxqihZEESgCKVf-UGba8DpTNkY8OMiEARExHBMnUuPuBSo_xcWf1BQykyFMPVX2ayaWkwMJwB-KVjWCGv3ddrX8zMvQtdCzk-OH-qm2waT2Q4yXnYylAujRpPp55U-q8i%5E1671017389	.login.vk.com	/	2023-12-17T22:05:42.036Z	272	✓	✓	None			Medium
+s	1	.login.vk.com	/	2023-12-14T11:29:08.036Z	2	✓	✓	None			Medium
+p	vk1.a.7beZBr3L5Hf3hFzthB8Jr5QpNWvYM3cJaWd661xTjVPBnbleFEgAzzmmXk5WZeko2GTDKRTpRnLd7A2XO4myymAwoVU9KnsjCiad3Ut0EAPT65vhry4HkvNFxyp-igH6lE318skMrti9rvpl8xna7tWvJaUwcijjqGeY1AD71Jw	.login.vk.com	/	2023-12-14T11:29:08.036Z	178	✓	✓	None			Medium
+guid	E71F19036399B3A2X1671017378	.tns-counter.ru	/	2023-12-14T11:29:20.820Z	31		✓	None			Medium
+remixluas2	YTkwOTk2NTI0ZmNjMWI2NzA3ODU0YmMy	vk.com	/	2023-12-19T00:32:09.352Z	42	✓	✓	None			Medium
+remixdmgr	864d3beb471b116ed15749a80a98b2a0e6dc9cdfe56c21784ea3f0e7aa2ce5f7	.vk.com	/	2023-12-18T23:48:27.858Z	73	✓	✓	None			Medium
+remixsid	1_2NfDTJmvBBt06Iiwih4YmUeKmO4gl1tVUHE0XUtPhwLK-ZD6cy6jonz_ClgAQFaChWdAdFQ1l3CfUNxSrFKiKA	.vk.com	/	2023-12-16T09:49:46.352Z	96	✓	✓	None			Medium
+i	AQCxs5ljBQCTAggEAaJjAdwECAQBAQAB4QQJAQLiBAoEFwTKB70HCAQBghUB	.mail.ru	/	2023-06-12T11:29:12.656Z	61		✓	None			Medium
+remixdmgr_tmp	39b1d97233743dce65cbf4e28a8f7f0126d78fe6713f660d2b3bd3798c6afa6a	.vk.com	/	2022-12-14T15:29:08.036Z	77	✓	✓	None			Medium
+remixnsid	vk1.a.SBgOE70bbVrhDa7XsfO4ybDhf9RjtAYDIttnVeZht_mNECODNCZTHj949kSLU3kMrtoyC7U0wWWGNP-TT1c0UzdzczkBRj7gmzOiMbWV5FfuwRyOC9OoLfV0FINw39sjPHkFbpgGfTTuiGGfvL7CmwqBrJ-J69gwWKYGUSCN-OMv3CYrqrwjMFHUM4tiSjkW	vk.com	/	2023-12-16T09:11:14.352Z	207	✓	✓	None			Medium
+remixgp	77adbaef3dbb0ab4aa2a92c2daea91bb	.vk.com	/	2022-12-21T11:28:57.000Z	39		✓	None			Medium
+remixpuad	E_OGtcj1L4eEQ0XmK0_-rsvCDaaDyIIfYJX_U8Vivoo	.vk.com	/	2023-12-14T11:29:08.036Z	52		✓	None			Medium
+tmr_detect	0%7C1671017355762	vk.com	/	2022-12-15T11:29:15.000Z	27						Medium
+remixsuc	1%3A	.vk.com	/	2023-12-17T22:05:42.036Z	12	✓	✓	None			Medium
+remixnsid	vk1.a.N5yGbhzgS7XNMOEn_FId-38B5WP6l4DM4OoBOydR873QedAPa85Sg8bAZzLXMDsavi8JPg1HQ_7Bo7wNhfp2E17tTReM-2YaA3KC9e36aPmH2OZmistEf7Yez-8cXRF6ZXnZbazpemXFLoFwMeqPSit9kTL8wDCUqY1JyCvBp-ppFScf7G1YHTs0kWabCjcz	login.vk.com	/	2023-12-18T18:34:08.036Z	207	✓	✓	None			Medium
+remixuas	Y2M0YThiOTY3ZjY2NTY2NzE1NTJlMDA0	.vk.com	/	2023-12-10T02:20:36.396Z	40	✓	✓	None			Medium
+VID	0WalII0gBC2E00000l1UL4oE:::0-0-8b40c79-8b40c62:CAASED2PPO2ABxSqU2qaeHV9KGwacG1ebWe9KbdfuiMk07JQHf759yc3zDCsBlrob-Dh6_lTSDJiUsonjcHxCs1edm8n64OR1l45uQoRoMhXaFfu-LpaZp0VF58fvci8Rf-s2MI0cAYLLBGSL7DwG2nOVWO8CuKqzZ2Lj1cnwM5xv6vwFnE	.mail.ru	/	2023-12-15T11:29:20.976Z	229	✓	✓	None			Medium
+remixscreen_depth	24	.vk.com	/	2023-12-14T11:29:20.000Z	19		✓	None			Medium
+remixdark_color_scheme	0	.vk.com	/	2023-12-14T11:29:20.000Z	23		✓	None			Medium
+remixdt	0	.vk.com	/	2023-12-14T11:28:57.000Z	8		✓	None			Medium
+remixscreen_orient	1	.vk.com	/	2022-12-21T11:29:20.000Z	19		✓	None			Medium
+remixscreen_height	1440	.vk.com	/	2023-12-14T11:29:20.000Z	22		✓	None			Medium
+remixscreen_dpr	1	.vk.com	/	2023-12-14T11:29:20.000Z	16		✓	None			Medium
+remixseenads	2	.vk.com	/	2023-01-13T11:29:12.000Z	13		✓	None			Medium
+remixscreen_width	2560	.vk.com	/	2023-12-14T11:29:20.000Z	21		✓	None			Medium
+remixnp	0	.vk.com	/	2022-12-29T11:28:56.000Z	8		✓	None			Medium
+remixua	41%7C-1%7C194%7C4128398713	.vk.com	/	2023-12-07T12:48:57.591Z	33		✓	None			Medium
+tmr_lvidTS	1671017337343	.vk.com	/	2023-11-12T11:29:20.000Z	23						Medium
+remixlang	0	.vk.com	/	2023-12-17T01:21:36.591Z	10		✓	None			Medium
+remixscreen_winzoom	1.72	.vk.com	/	2023-12-14T11:29:20.000Z	23		✓	None			Medium
+tmr_lvid	8d08c4b7e9fe288baebe0397c2d4b6f8	.vk.com	/	2023-11-12T11:29:20.000Z	40						Medium
+remixstlid	9088773826674206721_tvwwPdM2QoI84upAAuX21ORmkMdgxzikUz1ZGovjtBk	.vk.com	/	2023-12-14T11:28:55.591Z	73		✓	None			Medium
+remixstid	1473988515_F8pAerZ0za67KrXMyaOE8y8vlap3diCDwBmbl7Dt9DP	.vk.com	/	2023-12-18T06:51:09.591Z	63		✓	None			Medium
+remixcolor_scheme_mode	auto	.vk.com	/	2023-12-14T11:29:20.000Z	26		✓	None			Medium
+remixbdr	0	.vk.com	/	2022-12-15T11:28:55.591Z	9		✓	None			Medium
